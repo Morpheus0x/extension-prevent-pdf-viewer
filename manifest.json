@@ -1,20 +1,15 @@
 {
-  "browser_specific_settings": {
-    "gecko": {
-      "strict_min_version": "58.0a1"
-    }
-  },
+  "manifest_version": 2,
+  "name": "Prevent PDF Viewer on Download",
+  "version": "1.0",
+  "description": "Instantly closes the new tab that is opened after downloading a PDF",
+  "homepage_url": "https://github.com/Morpheus0x/extension-prevent-pdf-viewer",
   "background": {
       "scripts": ["background.js"]
   },
-  "description": "Instantly closes the new tab that is opened after downloading a PDF",
-  "homepage_url": "https://github.com/Morpheus0x/extension-prevent-pdf-viewer",
-  "manifest_version": 2,
-  "name": "Prevent PDF Viewer on Download",
   "permissions": [
     "tabs",
 	  "downloads",
     "webNavigation"
-  ],
-  "version": "1.0"
+  ]
 }
