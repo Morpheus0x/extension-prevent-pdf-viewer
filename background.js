@@ -3,53 +3,134 @@ const forbiddenHeaders = ['Accept-Charset', 'Accept-Encoding', 'Access-Control-R
 const forbiddenHeaderPrefixes = ['Proxy-', 'Sec-']
 
 let preventPreview = {};
+let downloadHeaders = {};
+let preventDownload = {};
+let preventDoubleDownload = {};
 
 // helper functions
 // Modified from Source: https://stackoverflow.com/a/67994693
 function getFileName(disposition) {
-    const utf8FilenameRegex = /filename\*=(["']?)utf-8''([\w%\-\.]+)(?:; ?|$|\1)/i;
-    const asciiFilenameRegex = /^filename=(["']?)(.*?[^\\])\1(?:; ?|$)/i;
+  const utf8FilenameRegex = /filename\*=(["']?)utf-8''([\w%\-\.]+)(?:; ?|$|\1)/i;
+  const asciiFilenameRegex = /^filename=(["']?)(.*?[^\\])\1(?:; ?|$)/i;
 
-    let fileName = null;
-    if (utf8FilenameRegex.test(disposition)) {
-      fileName = decodeURIComponent(utf8FilenameRegex.exec(disposition)[2]);
-    } else {
-      // prevent ReDos attacks by anchoring the ascii regex to string start and
-      //  slicing off everything before 'filename='
-      const filenameStart = disposition.toLowerCase().indexOf('filename=');
-      if (filenameStart >= 0) {
-        const partialDisposition = disposition.slice(filenameStart);
-        const matches = asciiFilenameRegex.exec(partialDisposition );
-        if (matches != null && matches[2]) {
-          fileName = matches[2];
-        }
+  let fileName = null;
+  if (utf8FilenameRegex.test(disposition)) {
+    fileName = decodeURIComponent(utf8FilenameRegex.exec(disposition)[2]);
+  } else {
+    // prevent ReDos attacks by anchoring the ascii regex to string start and
+    //  slicing off everything before 'filename='
+    const filenameStart = disposition.toLowerCase().indexOf('filename=');
+    if (filenameStart >= 0) {
+      const partialDisposition = disposition.slice(filenameStart);
+      const matches = asciiFilenameRegex.exec(partialDisposition );
+      if (matches != null && matches[2]) {
+        fileName = matches[2];
       }
     }
-    return fileName;
+  }
+  return fileName;
 }
 
 browser.tabs.onCreated.addListener((tab) => { 
-	console.log('newTabEvent: ', tab); 
-	if (preventPreview[tab.title.split('/').slice(-1)[0]] !== undefined) {
-		browser.tabs.remove(tab.id)
-		delete preventPreview[tab.title.split('/').slice(-1)[0]]
-	}
-	/* if (details.title.toLowerCase().endsWith('.pdf')) {
-		browser.tabs.remove(details.id)
-	} */
+  console.log('newTabEvent: ', tab); 
+  if (preventPreview[tab.title.split('/').slice(-1)[0]] !== undefined) {
+    browser.tabs.remove(tab.id)
+    delete preventPreview[tab.title.split('/').slice(-1)[0]]
+  }
+  /* if (details.title.toLowerCase().endsWith('.pdf')) {
+    browser.tabs.remove(details.id)
+  } */
 });
 
 browser.downloads.onCreated.addListener( (dl) => {
-	console.log('download created: ', dl)
-	if (dl.filename.toLowerCase().endsWith('.pdf')) {
+  console.log('download created: ', dl)
+  if (dl.filename.toLowerCase().endsWith('.pdf')) {
     if (dl.url.startsWith('blob:')) {
-		if (browser.runtime.PlatformOs === 'win') {
-			preventPreview[dl.filename.split('\\').slice(-1)[0]] = true
-		} else {
-			preventPreview[dl.filename.split('/').slice(-1)[0]] = true
-		}
-    } 
-		console.log('preventPreview: ', preventPreview)
-	}
+      if (browser.runtime.PlatformOs === 'win') {
+        preventPreview[dl.filename.split('\\').slice(-1)[0]] = true
+      } else {
+        preventPreview[dl.filename.split('/').slice(-1)[0]] = true
+      }
+    } else {
+      if (preventDownload[dl.url] !== undefined) { // Check for user saveAs setting
+        console.log('preventDownload: ', preventDownload)
+        browser.downloads.cancel(dl.id)
+        // TODO: delete dl history entry
+        delete preventDownload[dl.url]
+      }
+      /*try {
+        browser.downloads.download({ saveAs: true, url: dl.url }) // cookieStoreId: dl.cookieStoreId,  
+      } catch (e) {
+        console.log('caught dl error: ', e)
+      } */
+    }
+    console.log('preventPreview: ', preventPreview)
+  }
 });
 
+function getRequestHeadersPDF (req) {
+  console.log('req: ', req)
+  downloadHeaders[req.url] = req.requestHeaders
+}
+browser.webRequest.onBeforeSendHeaders.addListener(
+  getRequestHeadersPDF,
+  { urls: ['*://*/*.pdf', '*://*/*.pdf?*'], types: ['main_frame'] },
+  ['blocking', 'requestHeaders']
+)
+
+function getResponseHeadersPDF (resp) {
+  console.log('resp: ', resp)
+  if (preventDoubleDownload[resp.url] !== undefined) {
+    delete preventDoubleDownload[resp.url]
+    return
+  }
+  // console.log('downloadHeaders: ', downloadHeaders)
+  // console.log('dispo: ', resp.responseHeaders.find(e => e.name === "content-disposition"))
+  const contentDisposition = resp.responseHeaders.find(e => e.name === "content-disposition")
+  // console.log('contentDisposition !== undefined: ', contentDisposition !== undefined, 'contentDisposition.startsWith("attachment"): ', contentDisposition.value.startsWith("attachment"), 'contentDisposition: ', contentDisposition)
+  if( contentDisposition !== undefined && contentDisposition.value.startsWith("attachment")) { //, [0] === "attachment"
+    // console.log('content dispo attachment')
+    try {
+      let filename = ''
+      if (contentDisposition.value.split(';').length > 1) {
+        filename = getFileName(contentDisposition.value)
+      } else {
+        filename = resp.url.split('/').slice(-1)[0].split('?')[0]
+      }
+      let headers = []
+      if (downloadHeaders[resp.url] !== undefined) {
+        headers = downloadHeaders[resp.url].filter((e) => {
+          // Check and Remove Forbidden Headers
+          let noPrefix = true
+          for (header of downloadHeaders[resp.url]) {
+            for (prefix of forbiddenHeaderPrefixes) {
+              if (header.name.startsWith(prefix)) {
+                noPrefix = false
+                break
+              }
+            }
+            if (!noPrefix){
+              break
+            }
+          }
+          return forbiddenHeaders.indexOf(e.name) === -1 && noPrefix
+        })
+        delete downloadHeaders[resp.url]
+      }
+      // TODO: saveAs: depending on user settings
+      // console.log('before custom dl')
+      preventDownload[resp.url] = true
+      preventDoubleDownload[resp.url] = true
+      browser.downloads.download({ saveAs: true, url: resp.url, filename, headers }).catch((e) => delete preventDoubleDownload[resp.url])
+      // console.log('triggered download from Response Header')
+    } catch (e) {
+      console.log('custom dl error: ', e)
+    }
+    return { cancel: true }
+  }
+}
+browser.webRequest.onHeadersReceived.addListener(
+  getResponseHeadersPDF,
+  { urls: ['*://*/*.pdf', '*://*/*.pdf?*'] }, // ['<all_urls>'], types: ['main_frame']
+  ['blocking', 'responseHeaders']
+)
