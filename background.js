@@ -1,4 +1,7 @@
 
+const forbiddenHeaders = ['Accept-Charset', 'Accept-Encoding', 'Access-Control-Request-Headers', 'Access-Control-Request-Method', 'Connection', 'Content-Length', 'Cookie', 'Date', 'DNT', 'Expect', 'Feature-Policy', 'Host', 'Keep-Alive', 'Origin', 'Referer', 'TE', 'Trailer', 'Transfer-Encoding', 'Upgrade', 'Via']
+const forbiddenHeaderPrefixes = ['Proxy-', 'Sec-']
+
 let preventPreview = {};
 
 // helper functions
