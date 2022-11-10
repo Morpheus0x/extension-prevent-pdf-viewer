@@ -42,11 +42,13 @@ browser.tabs.onCreated.addListener((tab) => {
 browser.downloads.onCreated.addListener( (dl) => {
 	console.log('download created: ', dl)
 	if (dl.filename.toLowerCase().endsWith('.pdf')) {
+    if (dl.url.startsWith('blob:')) {
 		if (browser.runtime.PlatformOs === 'win') {
 			preventPreview[dl.filename.split('\\').slice(-1)[0]] = true
 		} else {
 			preventPreview[dl.filename.split('/').slice(-1)[0]] = true
 		}
+    } 
 		console.log('preventPreview: ', preventPreview)
 	}
 });
