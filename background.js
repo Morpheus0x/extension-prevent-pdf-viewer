@@ -4,7 +4,6 @@ const forbiddenHeaderPrefixes = ['Proxy-', 'Sec-']
 
 let preventPreview = {};
 let downloadHeaders = {};
-let preventDownload = {};
 let preventDoubleDownload = {};
 
 // helper functions
@@ -51,18 +50,7 @@ browser.downloads.onCreated.addListener( (dl) => {
       } else {
         preventPreview[dl.filename.split('/').slice(-1)[0]] = true
       }
-    } else {
-      if (preventDownload[dl.url] !== undefined) { // Check for user saveAs setting
-        console.log('preventDownload: ', preventDownload)
-        browser.downloads.cancel(dl.id)
-        // TODO: delete dl history entry
-        delete preventDownload[dl.url]
       }
-      /*try {
-        browser.downloads.download({ saveAs: true, url: dl.url }) // cookieStoreId: dl.cookieStoreId,  
-      } catch (e) {
-        console.log('caught dl error: ', e)
-      } */
     }
     console.log('preventPreview: ', preventPreview)
   }
@@ -114,7 +102,6 @@ function getResponseHeadersPDF (resp) {
       }
       // TODO: saveAs: depending on user settings
       // console.log('before custom dl')
-      preventDownload[resp.url] = true
       preventDoubleDownload[resp.url] = true
       browser.downloads.download({ saveAs: true, url: resp.url, filename, headers }).catch((e) => delete preventDoubleDownload[resp.url])
       // console.log('triggered download from Response Header')
