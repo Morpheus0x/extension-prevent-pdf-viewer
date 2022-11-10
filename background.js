@@ -51,7 +51,6 @@ browser.downloads.onCreated.addListener( (dl) => {
         preventPreview[dl.filename.split('/').slice(-1)[0]] = true
       }
       }
-    }
     console.log('preventPreview: ', preventPreview)
   }
 });
