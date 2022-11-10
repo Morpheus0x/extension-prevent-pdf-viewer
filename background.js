@@ -102,17 +102,12 @@ function getResponseHeadersPDF (resp) {
         headers = downloadHeaders[resp.url].filter((e) => {
           // Check and Remove Forbidden Headers
           let noPrefix = true
-          for (header of downloadHeaders[resp.url]) {
             for (prefix of forbiddenHeaderPrefixes) {
-              if (header.name.startsWith(prefix)) {
+          if (e.name.startsWith(prefix)) {
                 noPrefix = false
                 break
               }
             }
-            if (!noPrefix){
-              break
-            }
-          }
           return forbiddenHeaders.indexOf(e.name) === -1 && noPrefix
         })
         delete downloadHeaders[resp.url]
