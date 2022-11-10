@@ -65,6 +65,18 @@ browser.webRequest.onBeforeSendHeaders.addListener(
   ['blocking', 'requestHeaders']
 )
 
+async function customDownload (url, filename, headers) {
+  try { // not needed try
+    await timeout(100)
+    console.warn('downloading now')
+    browser.downloads.download({ saveAs: true, url, filename, headers }).catch((e) => {
+      console.warn('download aborted')
+      delete preventDoubleDownload[url]
+    })
+  } catch (e) {
+    console.warn('custom dl error: ', e)
+  }
+}
 function getResponseHeadersPDF (resp) {
   console.log('resp: ', resp)
   if (preventDoubleDownload[resp.url] !== undefined) {
@@ -77,7 +89,6 @@ function getResponseHeadersPDF (resp) {
   // console.log('contentDisposition !== undefined: ', contentDisposition !== undefined, 'contentDisposition.startsWith("attachment"): ', contentDisposition.value.startsWith("attachment"), 'contentDisposition: ', contentDisposition)
   if( contentDisposition !== undefined && contentDisposition.value.startsWith("attachment")) { //, [0] === "attachment"
     // console.log('content dispo attachment')
-    try {
       let filename = ''
       if (contentDisposition.value.split(';').length > 1) {
         filename = getFileName(contentDisposition.value)
@@ -102,11 +113,8 @@ function getResponseHeadersPDF (resp) {
       // TODO: saveAs: depending on user settings
       // console.log('before custom dl')
       preventDoubleDownload[resp.url] = true
-      browser.downloads.download({ saveAs: true, url: resp.url, filename, headers }).catch((e) => delete preventDoubleDownload[resp.url])
-      // console.log('triggered download from Response Header')
-    } catch (e) {
-      console.log('custom dl error: ', e)
-    }
+    customDownload(resp.url, fielname, headers)
+    console.warn('returning')
     return { cancel: true }
   }
 }
