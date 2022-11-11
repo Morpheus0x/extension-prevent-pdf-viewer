@@ -42,6 +42,14 @@ browser.tabs.onCreated.addListener((tab) => {
   } */
 });
 
+function downloadPDF(url) {
+  preventDoubleDownload[url] = true
+  browser.downloads.download({ saveAs: true, url: preventDownload[url].url, filename: preventDownload[url].filename })
+    .then((e) => delete preventDoubleDownload[url])
+    .catch((e) => delete preventDoubleDownload[url])
+  delete preventDownload[url]
+}
+
 browser.downloads.onCreated.addListener( (dl) => {
   console.log('download created: ', dl)
   if (dl.filename.toLowerCase().endsWith('.pdf')) {
@@ -57,15 +65,14 @@ browser.downloads.onCreated.addListener( (dl) => {
         console.log('preventDownload: ', preventDownload)
         browser.downloads.cancel(dl.id)
         // query: [dl.url], id: dl.id, startTime: dl.startTime
-        browser.downloads.erase({ url: dl.url, filename: dl.filename })
-          .then((e) => console.warn('erased successfully: ', e))
-          .catch((e) => console.error('erased error: ', e))
-        preventDoubleDownload[dl.url] = true
-        browser.downloads.download({ saveAs: true, url: preventDownload[dl.url].url, filename: preventDownload[dl.url].filename })
-          .then((e) => delete preventDoubleDownload[dl.url])
-          .catch((e) => delete preventDoubleDownload[dl.url])
+        browser.downloads.erase({ url: dl.url, filename: dl.filename }).then((e) => {
+          console.warn('erased successfully: ', e)
+          downloadPDF(dl.url)
+        }).catch((e) => {
+          console.error('erased error: ', e)
+          downloadPDF(dl.url)
+        })
         // TODO: delete dl history entry
-        delete preventDownload[dl.url]
       }
       /*try {
         browser.downloads.download({ saveAs: true, url: dl.url }) // cookieStoreId: dl.cookieStoreId,  
