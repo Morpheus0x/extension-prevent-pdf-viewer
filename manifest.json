@@ -10,6 +10,9 @@
   "permissions": [
     "tabs",
 	  "downloads",
-    "webNavigation"
+    "webNavigation",
+    "webRequest",
+    "webRequestBlocking",
+    "<all_urls>"
   ]
 }
