@@ -4,6 +4,7 @@ const forbiddenHeaderPrefixes = ['Proxy-', 'Sec-']
 
 let preventPreview = {};
 let downloadHeaders = {};
+let preventDownload = {};
 let preventDoubleDownload = {};
 
 // helper functions
@@ -50,72 +51,62 @@ browser.downloads.onCreated.addListener( (dl) => {
       } else {
         preventPreview[dl.filename.split('/').slice(-1)[0]] = true
       }
+      console.warn('prevent preview of blob pdf')
+    } else {
+      if (preventDownload[dl.url] !== undefined) { // Check for user saveAs setting
+        console.log('preventDownload: ', preventDownload)
+        browser.downloads.cancel(dl.id)
+        // query: [dl.url], id: dl.id, startTime: dl.startTime
+        browser.downloads.erase({ url: dl.url, filename: dl.filename })
+          .then((e) => console.warn('erased successfully: ', e))
+          .catch((e) => console.error('erased error: ', e))
+        preventDoubleDownload[dl.url] = true
+        browser.downloads.download({ saveAs: true, url: preventDownload[dl.url].url, filename: preventDownload[dl.url].filename })
+          .then((e) => delete preventDoubleDownload[dl.url])
+          .catch((e) => delete preventDoubleDownload[dl.url])
+        // TODO: delete dl history entry
+        delete preventDownload[dl.url]
       }
+      /*try {
+        browser.downloads.download({ saveAs: true, url: dl.url }) // cookieStoreId: dl.cookieStoreId,  
+      } catch (e) {
+        console.log('caught dl error: ', e)
+      } */
+    }
     console.log('preventPreview: ', preventPreview)
   }
 });
 
-function getRequestHeadersPDF (req) {
-  console.log('req: ', req)
-  downloadHeaders[req.url] = req.requestHeaders
-}
-browser.webRequest.onBeforeSendHeaders.addListener(
-  getRequestHeadersPDF,
-  { urls: ['*://*/*.pdf', '*://*/*.pdf?*'], types: ['main_frame'] },
-  ['blocking', 'requestHeaders']
-)
-
-async function customDownload (url, filename, headers) {
-  try { // not needed try
-    await timeout(100)
-    console.warn('downloading now')
-    browser.downloads.download({ saveAs: true, url, filename, headers }).catch((e) => {
-      console.warn('download aborted')
-      delete preventDoubleDownload[url]
-    })
-  } catch (e) {
-    console.warn('custom dl error: ', e)
-  }
-}
 function getResponseHeadersPDF (resp) {
   console.log('resp: ', resp)
   if (preventDoubleDownload[resp.url] !== undefined) {
     delete preventDoubleDownload[resp.url]
+    console.warn('response untouched to prevent double download')
     return
+  } else {
+    console.warn('processing response to prevent auto download')
   }
   // console.log('downloadHeaders: ', downloadHeaders)
   // console.log('dispo: ', resp.responseHeaders.find(e => e.name === "content-disposition"))
-  const contentDisposition = resp.responseHeaders.find(e => e.name === "content-disposition")
+  const contentDisposition = resp.responseHeaders.find(e => e.name.toLowerCase() === "content-disposition")
   // console.log('contentDisposition !== undefined: ', contentDisposition !== undefined, 'contentDisposition.startsWith("attachment"): ', contentDisposition.value.startsWith("attachment"), 'contentDisposition: ', contentDisposition)
   if( contentDisposition !== undefined && contentDisposition.value.startsWith("attachment")) { //, [0] === "attachment"
     // console.log('content dispo attachment')
+    try {
       let filename = ''
       if (contentDisposition.value.split(';').length > 1) {
         filename = getFileName(contentDisposition.value)
       } else {
         filename = resp.url.split('/').slice(-1)[0].split('?')[0]
       }
-      let headers = []
-      if (downloadHeaders[resp.url] !== undefined) {
-        headers = downloadHeaders[resp.url].filter((e) => {
-          // Check and Remove Forbidden Headers
-          let noPrefix = true
-            for (prefix of forbiddenHeaderPrefixes) {
-          if (e.name.startsWith(prefix)) {
-                noPrefix = false
-                break
-              }
-            }
-          return forbiddenHeaders.indexOf(e.name) === -1 && noPrefix
-        })
-        delete downloadHeaders[resp.url]
-      }
       // TODO: saveAs: depending on user settings
       // console.log('before custom dl')
-      preventDoubleDownload[resp.url] = true
-    customDownload(resp.url, fielname, headers)
-    console.warn('returning')
-    return { cancel: true }
+      preventDownload[resp.url] = { url: resp.url, filename }
+      // console.log('triggered download from Response Header')
+    } catch (e) {
+      console.log('custom dl error: ', e)
+    }
+    return // { cancel: true }
   }
 }
 browser.webRequest.onHeadersReceived.addListener(
