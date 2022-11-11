@@ -65,7 +65,12 @@ browser.downloads.onCreated.addListener( (dl) => {
         console.log('preventDownload: ', preventDownload)
         browser.downloads.cancel(dl.id)
         // query: [dl.url], id: dl.id, startTime: dl.startTime
-        browser.downloads.erase({ url: dl.url, filename: dl.filename }).then((e) => {
+        browser.downloads.erase({ 
+          url: dl.url, 
+          filename: dl.filename, 
+          limit: 1, 
+          orderBy: ["-startTime"] 
+        }).then((e) => {
           console.warn('erased successfully: ', e)
           downloadPDF(dl.url)
         }).catch((e) => {
