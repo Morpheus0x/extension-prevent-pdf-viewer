@@ -1,6 +1,7 @@
+const defaultSettings = { saveAs: false }
 async function getSetting(key) {
-  const userSettings = await browser.storage.sync.get(key).catch(storageError)
-  const policySettings = await browser.storage.managed.get(key).catch(() => undefined)
+  const userSettings = await browser.storage.sync.get(key).catch(() => undefined) || {}
+  const policySettings = await browser.storage.managed.get(key).catch(() => undefined) || {}
   return userSettings[key] || policySettings[key] || defaultSettings[key];
 }
 // Modified from Source: https://stackoverflow.com/a/67994693
@@ -38,9 +39,9 @@ browser.tabs.onCreated.addListener((tab) => {
   }
 });
 
-function downloadPDF(url) {
+async function downloadPDF(url) {
   preventDoubleDownload[url] = true
-  browser.downloads.download({ saveAs: getSetting('saveAs'), url: preventDownload[url].url, filename: preventDownload[url].filename })
+  browser.downloads.download({ saveAs: await getSetting('saveAs'), url: preventDownload[url].url, filename: preventDownload[url].filename })
     .then((e) => delete preventDoubleDownload[url])
     .catch((e) => delete preventDoubleDownload[url])
   delete preventDownload[url]
