@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "Prevent PDF Viewer on Download",
-  "version": "1.0",
+  "version": "1.1",
   "description": "Instantly closes the new tab that is opened after downloading a PDF",
   "homepage_url": "https://github.com/Morpheus0x/extension-prevent-pdf-viewer",
   "background": {
