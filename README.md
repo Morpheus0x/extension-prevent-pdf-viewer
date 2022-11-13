@@ -2,17 +2,34 @@
 
 ## What it does
 
-This extension instantly closes the new tab that is opened after downloading a PDF.
+This extension prevents a new tab from opening after downloading a PDF and optionally shows a `Save As...` windows to choose where to save the PDF.
 
-Due to changes in Firefox how PDF files are handled, any downloaded PDF will instantly open in a new tab by default. This extension tries to restore how PDFs were handled before Firefox 98.0.
+Due to changes in Firefox how PDF files are handled, any downloaded PDF will instantly open in a new tab by default. This extension restore how PDFs were handled before Firefox 98.0.
 
-This extension is designed to work in all circumstances, even when sometimes restarting a download isn't possible. The current functionality therefore is limited to only closing the new tab.
+This extension works nearly 100%, the only issue is with PDF "downloads" directly from a web application that uses blob to store the PDF before downloading it. In this case only the opening of a new tab with the PDF Viewer is prevented, since there isn't an actual http request that can be intercepted.
 
-## Goal
+## Release
 
-Any PDF that has `content-disposition: attachment` set or is otherwise indicated to be downloaded should just be downloaded and not opened with the Firefox PDF Viewer. Depending on user preference, the `where to save files` window should be shown.
+You can find [this extension](https://addons.mozilla.org/en-US/firefox/addon/prevent-pdf-viewer-on-download/) on the official Mozilla Addons page.
 
-I initially tried aborting any PDF download with `browser.downloads.cancel()` and restarting it via `browser.downloads.download()` with saveAs set to true. This would work for any normal PDF. However, this doesn't work for PDFs that are generated as a blob in a web application and directly downloaded that way, since the extension is unable to access that blob.
+## Settings
+
+Since extensions aren't able to read browser settings, the user has to manually set the option if a `Save As...` dialog should be displayed. Go to `about:addons` click on the `Prevent PDF Viewer on Download` extension and then on `Preferences`.
+
+Alternatively, this option can also be set using Firefox Enterprise Policy:
+```json
+{
+  "policies": {
+    "3rdparty": {
+      "Extensions": {
+        "{ffb7264d-cb68-4954-83e7-b4a8740a443a}": {
+          "saveAs": true
+        }
+      }
+    }
+  }
+}
+```
 
 ## References
 
@@ -22,8 +39,8 @@ Also as reference, a recent [reddit post](https://www.reddit.com/r/firefox/comme
 
 ## TODO
 
-- [ ] Implement download cancel and restart for non-blob PDF files, this would also completely prevent a new tab from opening
-- [ ] Add an option to change if the `Where to save files` window should be opened
+- [x] Implement download cancel and restart for non-blob PDF files, this would also completely prevent a new tab from opening
+- [x] Add an option to change if the `Where to save files` window should be opened
 
 ## Contribution
 
