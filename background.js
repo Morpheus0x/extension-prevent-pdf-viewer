@@ -2,7 +2,8 @@ const defaultSettings = { saveAs: false }
 async function getSetting(key) {
   const userSettings = await browser.storage.sync.get(key).catch(() => undefined) || {}
   const policySettings = await browser.storage.managed.get(key).catch(() => undefined) || {}
-  return userSettings[key] || policySettings[key] || defaultSettings[key];
+  console.log('bg getSetting: ', userSettings[key], policySettings[key], defaultSettings[key])
+  return userSettings[key] !== undefined ? userSettings[key] : policySettings[key] !== undefined ? policySettings[key] : defaultSettings[key];
 }
 // Modified from Source: https://stackoverflow.com/a/67994693
 function getFileName(disposition) {

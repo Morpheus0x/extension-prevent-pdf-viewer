@@ -6,7 +6,7 @@ function storageError(e) {
 async function getSetting(key) {
     const userSettings = await browser.storage.sync.get(key).catch(storageError) || {}
     const policySettings = await browser.storage.managed.get(key).catch(() => undefined) || {}
-    return userSettings[key] || policySettings[key] || defaultSettings[key];
+    return userSettings[key] !== undefined ? userSettings[key] : policySettings[key] !== undefined ? policySettings[key] : defaultSettings[key];
 }
 async function setSetting(key, newValue) {
     console.log('newValue: ', newValue, 'for key: ', key)
