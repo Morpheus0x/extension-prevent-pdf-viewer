@@ -2,7 +2,7 @@
 
 ## What it does
 
-This extension prevents a new tab from opening after downloading a PDF and optionally shows a `Save As...` windows to choose where to save the PDF.
+This extension prevents a new tab from opening after downloading a PDF and optionally shows a `Save As...` window to choose where to save the PDF.
 
 Due to changes in Firefox how PDF files are handled, any downloaded PDF will instantly open in a new tab by default. This extension restore how PDFs were handled before Firefox 98.0.
 
