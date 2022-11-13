@@ -7,12 +7,21 @@
   "background": {
       "scripts": ["background.js"]
   },
+  "options_ui": {
+    "page": "settings.html"
+  },
   "permissions": [
     "tabs",
+    "storage",
 	  "downloads",
     "webNavigation",
     "webRequest",
     "webRequestBlocking",
     "<all_urls>"
-  ]
+  ],
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "prevent-pdf-viewer@morpheus0x.com"
+    }
+  }
 }
