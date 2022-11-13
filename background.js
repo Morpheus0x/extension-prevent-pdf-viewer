@@ -1,9 +1,4 @@
-
-const forbiddenHeaders = ['Accept-Charset', 'Accept-Encoding', 'Access-Control-Request-Headers', 'Access-Control-Request-Method', 'Connection', 'Content-Length', 'Cookie', 'Date', 'DNT', 'Expect', 'Feature-Policy', 'Host', 'Keep-Alive', 'Origin', 'Referer', 'TE', 'Trailer', 'Transfer-Encoding', 'Upgrade', 'Via']
-const forbiddenHeaderPrefixes = ['Proxy-', 'Sec-']
-
 let preventPreview = {};
-let downloadHeaders = {};
 let preventDownload = {};
 let preventDoubleDownload = {};
 
@@ -32,14 +27,11 @@ function getFileName(disposition) {
 }
 
 browser.tabs.onCreated.addListener((tab) => { 
-  console.log('newTabEvent: ', tab); 
+  // Close any PDF Viewer tab that opens for downloaded PDFs
   if (preventPreview[tab.title.split('/').slice(-1)[0]] !== undefined) {
     browser.tabs.remove(tab.id)
     delete preventPreview[tab.title.split('/').slice(-1)[0]]
   }
-  /* if (details.title.toLowerCase().endsWith('.pdf')) {
-    browser.tabs.remove(details.id)
-  } */
 });
 
 function downloadPDF(url) {
@@ -51,7 +43,6 @@ function downloadPDF(url) {
 }
 
 browser.downloads.onCreated.addListener( (dl) => {
-  console.log('download created: ', dl)
   if (dl.filename.toLowerCase().endsWith('.pdf')) {
     if (dl.url.startsWith('blob:')) {
       if (browser.runtime.PlatformOs === 'win') {
@@ -64,7 +55,6 @@ browser.downloads.onCreated.addListener( (dl) => {
       if (preventDownload[dl.url] !== undefined) { // Check for user saveAs setting
         console.log('preventDownload: ', preventDownload)
         browser.downloads.cancel(dl.id)
-        // query: [dl.url], id: dl.id, startTime: dl.startTime
         browser.downloads.erase({ 
           url: dl.url, 
           filename: dl.filename, 
@@ -77,20 +67,12 @@ browser.downloads.onCreated.addListener( (dl) => {
           console.error('erased error: ', e)
           downloadPDF(dl.url)
         })
-        // TODO: delete dl history entry
       }
-      /*try {
-        browser.downloads.download({ saveAs: true, url: dl.url }) // cookieStoreId: dl.cookieStoreId,  
-      } catch (e) {
-        console.log('caught dl error: ', e)
-      } */
     }
-    console.log('preventPreview: ', preventPreview)
   }
 });
 
 function getResponseHeadersPDF (resp) {
-  console.log('resp: ', resp)
   if (preventDoubleDownload[resp.url] !== undefined) {
     delete preventDoubleDownload[resp.url]
     console.warn('response untouched to prevent double download')
@@ -98,12 +80,8 @@ function getResponseHeadersPDF (resp) {
   } else {
     console.warn('processing response to prevent auto download')
   }
-  // console.log('downloadHeaders: ', downloadHeaders)
-  // console.log('dispo: ', resp.responseHeaders.find(e => e.name === "content-disposition"))
   const contentDisposition = resp.responseHeaders.find(e => e.name.toLowerCase() === "content-disposition")
-  // console.log('contentDisposition !== undefined: ', contentDisposition !== undefined, 'contentDisposition.startsWith("attachment"): ', contentDisposition.value.startsWith("attachment"), 'contentDisposition: ', contentDisposition)
-  if( contentDisposition !== undefined && contentDisposition.value.startsWith("attachment")) { //, [0] === "attachment"
-    // console.log('content dispo attachment')
+  if( contentDisposition !== undefined && contentDisposition.value.startsWith("attachment")) {
     try {
       let filename = ''
       if (contentDisposition.value.split(';').length > 1) {
@@ -112,13 +90,11 @@ function getResponseHeadersPDF (resp) {
         filename = resp.url.split('/').slice(-1)[0].split('?')[0]
       }
       // TODO: saveAs: depending on user settings
-      // console.log('before custom dl')
       preventDownload[resp.url] = { url: resp.url, filename }
-      // console.log('triggered download from Response Header')
     } catch (e) {
-      console.log('custom dl error: ', e)
+      console.error('custom dl error: ', e)
     }
-    return // { cancel: true }
+    return
   }
 }
 browser.webRequest.onHeadersReceived.addListener(
