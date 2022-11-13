@@ -1,3 +1,4 @@
+import { getSetting } from './store.js'
 import { getFileName } from './helpers.js'
 
 let preventPreview = {};
@@ -14,7 +15,7 @@ browser.tabs.onCreated.addListener((tab) => {
 
 function downloadPDF(url) {
   preventDoubleDownload[url] = true
-  browser.downloads.download({ saveAs: true, url: preventDownload[url].url, filename: preventDownload[url].filename })
+  browser.downloads.download({ saveAs: getSetting('saveAs'), url: preventDownload[url].url, filename: preventDownload[url].filename })
     .then((e) => delete preventDoubleDownload[url])
     .catch((e) => delete preventDoubleDownload[url])
   delete preventDownload[url]
@@ -30,8 +31,8 @@ browser.downloads.onCreated.addListener( (dl) => {
       }
       console.warn('prevent preview of blob pdf')
     } else {
-      if (preventDownload[dl.url] !== undefined) { // Check for user saveAs setting
-        console.log('preventDownload: ', preventDownload)
+      if (preventDownload[dl.url] !== undefined) {
+        // Even if no saveAs dialog should be displayed, redownload it to completely prevent popup
         browser.downloads.cancel(dl.id)
         browser.downloads.erase({ 
           url: dl.url, 
@@ -67,7 +68,6 @@ function getResponseHeadersPDF (resp) {
       } else {
         filename = resp.url.split('/').slice(-1)[0].split('?')[0]
       }
-      // TODO: saveAs: depending on user settings
       preventDownload[resp.url] = { url: resp.url, filename }
     } catch (e) {
       console.error('custom dl error: ', e)
